@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import rospy
 import tf as transforms
 import numpy as np
@@ -18,16 +17,36 @@ if __name__ == "__main__":
     # Wait until connected.  You don't have to wait, but the first
     # messages might go out before the connection and hence be lost.
     rospy.sleep(0.25)
-
-    # Create a joint state message.  Each joint is explicitly named.
-    msg = JointState()
-    msg.name.append('theta1')    # Keep appending joint names
-    msg.name.append('theta2')
-    msg.name.append('theta3')
-    msg.name.append('theta4')
-    msg.name.append('theta5')
-    msg.name.append('theta6')
-
+    joints = {
+        'back_bkx' : 0.0,
+        'back_bky' : 0.0,
+        'back_bkz' : 0.0,
+        'l_arm_elx' : 0.0,
+        'l_arm_ely' : 0.0,
+        'l_arm_shx' : 0.0,
+        'l_arm_shz' : 0.0,
+        'l_arm_wrx' : 0.0,
+        'l_arm_wry' : 0.0,
+        'l_arm_wry2' : 0.0,
+        'l_leg_akx' : 0.0,
+        'l_leg_aky' : 0.0,
+        'l_leg_hpx' : 0.0,
+        'l_leg_hpz' : 0.0,
+        'l_leg_kny' : 0.0,
+        'neck_ry' : 0.0,
+        'r_arm_elx' : 0.0,
+        'r_arm_ely' : 0.0,
+        'r_arm_shx' : 0.0,
+        'r_arm_shz' : 0.0,
+        'r_arm_wrx' : 0.0,
+        'r_arm_wry' : 0.0,
+        'r_arm_wry2' : 0.0,
+        'r_leg_akx' : 0.0,
+        'r_leg_aky' : 0.0,
+        'r_leg_hpx' : 0.0,
+        'r_leg_hpz' : 0.0,
+        'r_leg_kny' : 0.0
+    }
 
     # Prepare a servo loop at 100Hz.
     rate  = 100;
@@ -41,12 +60,22 @@ if __name__ == "__main__":
     tf  = 2.0
     lam = 0.1/dt
     while not rospy.is_shutdown():
-
         # Move to a new time step, assuming a constant step!
         t = t + dt
 
-        # Set the positions as a function of time.
-        msg.position = [0.1, 3.2, -0.2, 1.3, -2.2, 0.7]
+        # Here is where we will calculate the new joint values based on
+        # time step and the current positions stored in joints dictionary
+        joints['r_leg_kny'] = np.pi / 4
+        joints['l_leg_kny'] = np.pi / 4
+
+        # create a joint state message
+        msg = JointState()
+        joint_values = []
+        for joint_name, val in joints.items():
+            msg.name.append(joint_name)
+            joint_values.append(val)
+
+        msg.position = joint_values
 
         # Send the command (with the current time) and sleep.
         msg.header.stamp = rospy.Time.now()
