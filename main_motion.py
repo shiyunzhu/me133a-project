@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# This file contains the code
 
 import rospy
 import tf as transforms
