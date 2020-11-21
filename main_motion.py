@@ -4,6 +4,7 @@ import rospy
 import tf as transforms
 import numpy as np
 
+from kinematics import Kinematics
 from sensor_msgs.msg   import JointState
 
 if __name__ == "__main__":
@@ -50,6 +51,30 @@ if __name__ == "__main__":
         'r_leg_kny' : 0.0
     }
 
+    # Grab the URDF from the parameter server.
+    urdf = rospy.get_param('/robot_description')
+
+    # Set up the kinematics, from pelvis to left and right foot.
+    ll_kin = Kinematics(urdf, 'pelvis', 'l_foot')
+    rl_kin = Kinematics(urdf, 'pelvis', 'r_foot')
+    ll_N   = ll_kin.dofs()
+    rl_N   = rl_kin.dofs()
+
+    left_leg_joints_names = [
+        'l_leg_hpz',
+        'l_leg_hpx',
+        'l_leg_hpy',
+        'l_leg_kny',
+        'l_leg_aky',
+        'l_leg_akx'
+    ]
+
+    left_leg_q = np.array([[joints[n]] for n in left_leg_joints_names])
+
+
+    # Instantiate a broadcaster for
+    broadcaster = transforms.TransformBroadcaster()
+
     # Prepare a servo loop at 100Hz.
     rate  = 100;
     servo = rospy.Rate(rate)
@@ -67,8 +92,23 @@ if __name__ == "__main__":
 
         # Here is where we will calculate the new joint values based on
         # time step and the current positions stored in joints dictionary
+
+        # For our first example, we will try to move the left leg backwards
+        # w.r.t the pelvis while keeping the foot parallel to the ground
+
+
+
+
         joints['r_leg_kny'] = np.pi / 4
         joints['l_leg_kny'] = np.pi / 4
+
+        # Calculate the new position of the pelvis
+        p_pw = np.array([[5 * t],[0],[0]])# Choose the pelvis w.r.t. world position
+        R_pw = np.identity(3)     # Choose the pelviw w.r.t. world orientation
+        # Determine the quaternions for the orientation, using a T matrix:
+        T_pw = np.vstack((np.hstack((R_pw, p_pw)),
+                          np.array([[0, 0, 0, 1]])))
+        quat_pw = transforms.transformations.quaternion_from_matrix(T_pw)
 
         # create a joint state message
         msg = JointState()
@@ -82,6 +122,10 @@ if __name__ == "__main__":
         # Send the command (with the current time) and sleep.
         msg.header.stamp = rospy.Time.now()
         pub.publish(msg)
+
+        # Place the pelvis w.r.t. world.
+        broadcaster.sendTransform(p_pw, quat_pw, rospy.Time.now(), 'pelvis', 'world')
+
         servo.sleep()
 
         # Break if we have completed the full time.
