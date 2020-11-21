@@ -4,70 +4,9 @@ import rospy
 import tf as transforms
 import numpy as np
 
-from motions import Motions
+from motions import Motion
 from kinematics import Kinematics
 from sensor_msgs.msg   import JointState
-
-def get_velocity(t):
-    leg_angle = (30 - 30 * (t % 2)) * np.pi / 180
-    leg_length = 0.8620
-    xdot = -(np.pi / 6.0) * np.cos(leg_angle) * leg_length
-    ydot = 0
-    zdot = -(np.pi / 6.0) * np.sin(leg_angle) * leg_length
-    return np.array([[xdot],[ydot],[zdot]])
-
-# Length of leg: 0.8620
-def get_position(t):
-    leg_angle = (30 - 30 * (t % 2)) * np.pi / 180
-    leg_length = 0.8620
-    x = np.sin(leg_angle) * leg_length
-    y = 0.114083
-    z = -np.cos(leg_angle) * leg_length
-    return np.array([[x],[y],[z]])
-
-def get_R(t):
-    return np.identity(3)
-
-def get_omega(t):
-    return np.array([[0], [0], [0]])
-
-def getJointAngles(kin, t, q, N, dt, lam):
-    J = np.zeros((6,N))
-    p = np.zeros((3,1))
-    R = np.identity(3)
-
-    # this changes the position and R
-    kin.fkin(q, p, R)
-
-    # this calculates the Jacobian
-    kin.Jac(q, J)
-    # J = np.vstack((J, [[0, 0, 1, 0, 0, 0, 1]]))
-
-    R_d = get_R(t)
-    omega = get_omega(t)
-    p_dot = get_velocity(t)
-    velocity = np.vstack((p_dot, omega))
-    error_p = get_position(t) - p
-    error_r = np.array(0.5 * (np.cross(R[:, 0], R_d[:, 0]) + np.cross(R[:, 1], R_d[:, 1]) + np.cross(R[:, 2], R_d[:, 2]))).reshape(3, 1)
-    error = np.vstack((error_p, error_r))
-    vr = velocity + lam * error
-
-    qdot = np.linalg.pinv(J, 0.001) @ vr
-    q = q + qdot * dt
-
-    return q
-
-def getPelvisPosition(t):
-    # Calculate the new position of the pelvis
-    p_pw = np.array([[-0.5 * t],[0],[0.8]])# Choose the pelvis w.r.t. world position
-    R_pw = np.identity(3)     # Choose the pelviw w.r.t. world orientation
-    # Determine the quaternions for the orientation, using a T matrix:
-    T_pw = np.vstack((np.hstack((R_pw, p_pw)),np.array([[0, 0, 0, 1]])))
-    quat_pw = transforms.transformations.quaternion_from_matrix(T_pw)
-    return p_pw, quat_pw
-
-def get_damped_J(J, gamma):
-    return np.transpose(J) @ J
 
 if __name__ == "__main__":
     # Prepare the node.
@@ -144,7 +83,7 @@ if __name__ == "__main__":
 
     right_leg_q = np.array([[joints[n]] for n in right_leg_joints_names])
 
-    motion = Motions()
+    motion = Motion()
 
     # Instantiate a broadcaster for
     broadcaster = transforms.TransformBroadcaster()

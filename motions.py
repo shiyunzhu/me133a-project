@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
+import tf as transforms
 
 from kinematics import Kinematics
 import utils
@@ -44,9 +45,10 @@ class Motion():
     # Functions for bent leg motion
     # ==========================================================================
     def _get_bent_leg_position(self):
+        foot_length = 0.1
         x = np.sin(-self.leg_angle) * self.leg_length
         y = 0.114083
-        z = -np.cos(-self.leg_angle) * self.leg_length
+        z = -np.cos(-self.leg_angle) * self.leg_length + foot_length
         return np.array([[x],[y],[z]])
 
     def _get_bent_leg_velocity(self):
@@ -93,15 +95,15 @@ class Motion():
         kin.Jac(q, J)
 
         if straight:
-            R_d = _get_straight_leg_R()
-            omega = _get_straight_leg_omega()
-            p_dot = _get_straight_leg_velocity()
-            x = _get_straight_leg_position()
+            R_d = self._get_straight_leg_R()
+            omega = self._get_straight_leg_omega()
+            p_dot = self._get_straight_leg_velocity()
+            x = self._get_straight_leg_position()
         else:
-            R_d = _get_bent_leg_R()
-            omega = _get_bent_leg_omega()
-            p_dot = _get_bent_leg_velocity()
-            x = _get_bent_leg_position()
+            R_d = self._get_bent_leg_R()
+            omega = self._get_bent_leg_omega()
+            p_dot = self._get_bent_leg_velocity()
+            x = self._get_bent_leg_position()
 
 
         velocity = np.vstack((p_dot, omega))
