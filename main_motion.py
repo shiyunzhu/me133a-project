@@ -4,6 +4,7 @@ import rospy
 import tf as transforms
 import numpy as np
 
+from motions import Motions
 from kinematics import Kinematics
 from sensor_msgs.msg   import JointState
 
@@ -132,6 +133,18 @@ if __name__ == "__main__":
 
     left_leg_q = np.array([[joints[n]] for n in left_leg_joints_names])
 
+    right_leg_joints_names = [
+        'r_leg_hpz',
+        'r_leg_hpx',
+        'r_leg_hpy',
+        'r_leg_kny',
+        'r_leg_aky',
+        'r_leg_akx'
+    ]
+
+    right_leg_q = np.array([[joints[n]] for n in right_leg_joints_names])
+
+    motion = Motions()
 
     # Instantiate a broadcaster for
     broadcaster = transforms.TransformBroadcaster()
@@ -156,13 +169,18 @@ if __name__ == "__main__":
 
         # For our first example, we will try to move the left leg backwards
         # w.r.t the pelvis while keeping the foot parallel to the ground
-        left_leg_q = getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam)
+        left_leg_q = motion.getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam)
 
         for q_name, q in zip(left_leg_joints_names, left_leg_q):
             joints[q_name] = q
 
+        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=False)
+
+        for q_name, q in zip(right_leg_joints_names, right_leg_q):
+            joints[q_name] = q
+
         # Calculate the new position of the pelvis
-        p_pw, quat_pw = getPelvisPosition(t)
+        p_pw, quat_pw = motion.getPelvisPosition(t)
 
         # create a joint state message
         msg = JointState()
