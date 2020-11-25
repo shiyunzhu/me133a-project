@@ -21,12 +21,12 @@ if __name__ == "__main__":
     rospy.sleep(0.25)
     joints = {
         'back_bkx' : 0.0,
-        'back_bky' : 0.0,
+        'back_bky' : 0.22,
         'back_bkz' : 0.0,
-        'l_arm_elx' : 0.0,
+        'l_arm_elx' : 1.0,
         'l_arm_ely' : 0.0,
-        'l_arm_shx' : 0.0,
-        'l_arm_shz' : 0.0,
+        'l_arm_shx' : -1.5,
+        'l_arm_shz' : -1.5,
         'l_arm_wrx' : 0.0,
         'l_arm_wry' : 0.0,
         'l_arm_wry2' : 0.0,
@@ -37,10 +37,10 @@ if __name__ == "__main__":
         'l_leg_hpz' : 0.0,
         'l_leg_kny' : 0.0,
         'neck_ry' : 0.0,
-        'r_arm_elx' : 0.0,
-        'r_arm_ely' : 0.0,
-        'r_arm_shx' : 0.0,
-        'r_arm_shz' : 0.0,
+        'r_arm_elx' : -1.77,
+        'r_arm_ely' : 0.31,
+        'r_arm_shx' : -0.44,
+        'r_arm_shz' : 1.57,
         'r_arm_wrx' : 0.0,
         'r_arm_wry' : 0.0,
         'r_arm_wry2' : 0.0,
@@ -83,7 +83,6 @@ if __name__ == "__main__":
 
     right_leg_q = np.array([[joints[n]] for n in right_leg_joints_names])
 
-    motion = Motion()
 
     # Instantiate a broadcaster for
     broadcaster = transforms.TransformBroadcaster()
@@ -97,19 +96,21 @@ if __name__ == "__main__":
 
     # Run the servo loop until shutdown (killed or ctrl-C'ed).
     t   = 0.0
-    tf  = 2.0
+    tf  = 5.0
     lam = 0.1/dt
-    switch_after_t = 1
-    actual_t = 0
+    switch_after_t = 0.75
+    t_cycle = 0.0
     # this is the default, and means that the right leg is bent
     switched = False
+
+    motion = Motion(time_duration=switch_after_t)
     while not rospy.is_shutdown():
         # Move to a new time step, assuming a constant step!
         t = t + dt
-        actual_t = actual_t + dt
+        t_cycle = t_cycle + dt
 
-        if t >= switch_after_t:
-            t = 0
+        if t_cycle >= switch_after_t:
+            t_cycle = 0.0
             switched = not switched
 
         # Here is where we will calculate the new joint values based on
@@ -126,7 +127,7 @@ if __name__ == "__main__":
             joints[q_name] = q
 
         # Calculate the new position of the pelvis
-        p_pw, quat_pw = motion.getPelvisPosition(actual_t)
+        p_pw, quat_pw = motion.getPelvisPosition(t)
 
         # create a joint state message
         msg = JointState()
@@ -147,5 +148,5 @@ if __name__ == "__main__":
         servo.sleep()
 
         # Break if we have completed the full time.
-        if (actual_t > tf):
+        if (t > tf):
             break

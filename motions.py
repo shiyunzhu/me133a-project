@@ -8,11 +8,21 @@ import utils
 
 class Motion():
 
-    def __init__(self, leg_length=0.8620):
+    def __init__(self, leg_length=0.8620, time_duration=1.0):
         self.leg_length = leg_length
+        self.time_duration = time_duration
+        self.c = self._calc_spline(time_duration)
         self.leg_angle = 0.0
         self.s = 0.0
         self.sdot = 0.0
+
+    def _calc_spline(self, dt):
+        Y = np.array([[1, 0, 0, 0],
+                      [0, 1, 0, 0],
+                      [1, dt, dt**2, dt**3],
+                      [0, 1, 2 * dt, 3 * dt ** 2]])
+        c = np.linalg.pinv(Y) @ np.array([[0],[0],[1],[0]])
+        return c.flatten()
 
     def _update_s(self, t):
         '''
@@ -22,9 +32,14 @@ class Motion():
         the function s(t) has p_0 = 0 and p_f = 1, v_0 = v_f = 0 and a time
         duration of 1 second
         '''
-        t_floor = t % 1
-        self.s = 3 * t_floor ** 2 - 2 * t_floor ** 3
-        self.sdot = 6 * t_floor - 6 * t_floor ** 2
+        t_floor = t % self.time_duration
+        self.s = (self.c[0]
+                 + self.c[1] * t_floor
+                 + self.c[2] * t_floor ** 2
+                 + self.c[3] * t_floor ** 3)
+        self.sdot = (self.c[1]
+                    + 2 * self.c[2] * t_floor
+                    + 3 * self.c[3] * t_floor ** 3)
 
     def _update_leg_angle(self):
         '''
@@ -88,7 +103,7 @@ class Motion():
     # ==========================================================================
     def getPelvisPosition(self, t):
         # Calculate the new position of the pelvis
-        x = -0.5 * (self.s + math.floor(t))
+        x = -0.5 * (self.s + math.floor(t / self.time_duration))
         y = 0.0
         z = np.cos(self.leg_angle) * self.leg_length
 
@@ -132,7 +147,7 @@ class Motion():
         error = np.vstack((error_p, error_r))
         vr = velocity + lam * error
 
-        qdot = utils.damped_pseudo_inverse(J, 0.1) @ vr
+        qdot = utils.damped_pseudo_inverse(J, 0.05) @ vr
         q = q + qdot * dt
 
         return q
