@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import tf as transforms
+import math
 
 from kinematics import Kinematics
 import utils
@@ -14,24 +15,27 @@ class Motion():
         self.sdot = 0.0
 
     def _update_s(self, t):
-        self.s = 0
-        self.sdot = 0
+        t_floor = t % 1
+        self.s = 3 * t_floor ** 2 - 2 * t_floor ** 3
+        self.sdot = 6 * t_floor - 6 * t_floor ** 2
 
-    def _update_leg_angle(self, t):
-        self.leg_angle = (20 - 40 * (t % 1)) * np.pi / 180
+    def _update_leg_angle(self):
+        self.leg_angle = (20 - 40 * (self.s % 1)) * np.pi / 180
 
     # ==========================================================================
     # Functions for straight leg movement
     # ==========================================================================
     def _get_straight_leg_velocity(self):
-        xdot = -(np.pi / 6.0) * np.cos(self.leg_angle) * self.leg_length
+        xdot = -(np.pi / 6.0) * self.sdot * np.cos(self.leg_angle) * self.leg_length
         ydot = 0
-        zdot = -(np.pi / 6.0) * np.sin(self.leg_angle) * self.leg_length
+        zdot = -(np.pi / 6.0) * self.sdot * np.sin(self.leg_angle) * self.leg_length
         return np.array([[xdot],[ydot],[zdot]])
 
-    def _get_straight_leg_position(self):
+    def _get_straight_leg_position(self, is_left=True):
         x = np.sin(self.leg_angle) * self.leg_length
         y = 0.114083
+        if not is_left:
+            y = -0.114083
         z = -np.cos(self.leg_angle) * self.leg_length
         return np.array([[x],[y],[z]])
 
@@ -44,17 +48,19 @@ class Motion():
     # ==========================================================================
     # Functions for bent leg motion
     # ==========================================================================
-    def _get_bent_leg_position(self):
+    def _get_bent_leg_position(self, is_left=True):
         foot_length = 0.1
         x = np.sin(-self.leg_angle) * self.leg_length
         y = 0.114083
+        if not is_left:
+            y = -0.114083
         z = -np.cos(-self.leg_angle) * self.leg_length + foot_length
         return np.array([[x],[y],[z]])
 
     def _get_bent_leg_velocity(self):
-        xdot = (np.pi / 6.0) * np.cos(-self.leg_angle) * self.leg_length
+        xdot = (np.pi / 6.0) * self.sdot * np.cos(-self.leg_angle) * self.leg_length
         ydot = 0
-        zdot = (np.pi / 6.0) * np.sin(-self.leg_angle) * self.leg_length
+        zdot = (np.pi / 6.0) * self.sdot * np.sin(-self.leg_angle) * self.leg_length
         return np.array([[xdot],[ydot],[zdot]])
 
     def _get_bent_leg_R(self):
@@ -68,7 +74,7 @@ class Motion():
     # ==========================================================================
     def getPelvisPosition(self, t):
         # Calculate the new position of the pelvis
-        x = -0.5 * t
+        x = -0.5 * (self.s + math.floor(t))
         y = 0.0
         z = np.cos(self.leg_angle) * self.leg_length
 
@@ -79,10 +85,10 @@ class Motion():
         quat_pw = transforms.transformations.quaternion_from_matrix(T_pw)
         return p_pw, quat_pw
 
-    def getJointAngles(self, kin, t, q, N, dt, lam, straight=True):
+    def getJointAngles(self, kin, t, q, N, dt, lam, straight=True, is_left=True):
         # update leg_angle
         self._update_s(t)
-        self._update_leg_angle(t)
+        self._update_leg_angle()
 
         J = np.zeros((6,N))
         p = np.zeros((3,1))
@@ -98,12 +104,12 @@ class Motion():
             R_d = self._get_straight_leg_R()
             omega = self._get_straight_leg_omega()
             p_dot = self._get_straight_leg_velocity()
-            x = self._get_straight_leg_position()
+            x = self._get_straight_leg_position(is_left)
         else:
             R_d = self._get_bent_leg_R()
             omega = self._get_bent_leg_omega()
             p_dot = self._get_bent_leg_velocity()
-            x = self._get_bent_leg_position()
+            x = self._get_bent_leg_position(is_left)
 
 
         velocity = np.vstack((p_dot, omega))

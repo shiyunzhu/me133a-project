@@ -113,7 +113,7 @@ if __name__ == "__main__":
         for q_name, q in zip(left_leg_joints_names, left_leg_q):
             joints[q_name] = q
 
-        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=False)
+        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=False, is_left=False)
 
         for q_name, q in zip(right_leg_joints_names, right_leg_q):
             joints[q_name] = q
