@@ -99,27 +99,34 @@ if __name__ == "__main__":
     t   = 0.0
     tf  = 2.0
     lam = 0.1/dt
+    switch_after_t = 1
+    actual_t = 0
+    # this is the default, and means that the right leg is bent
+    switched = False
     while not rospy.is_shutdown():
         # Move to a new time step, assuming a constant step!
         t = t + dt
+        actual_t = actual_t + dt
+
+        if t >= switch_after_t:
+            t = 0
+            switched = not switched
 
         # Here is where we will calculate the new joint values based on
         # time step and the current positions stored in joints dictionary
 
         # For our first example, we will try to move the left leg backwards
         # w.r.t the pelvis while keeping the foot parallel to the ground
-        left_leg_q = motion.getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam)
-
+        left_leg_q = motion.getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam, straight=(not switched))
         for q_name, q in zip(left_leg_joints_names, left_leg_q):
             joints[q_name] = q
 
-        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=False, is_left=False)
-
+        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=switched, is_left=False)
         for q_name, q in zip(right_leg_joints_names, right_leg_q):
             joints[q_name] = q
 
         # Calculate the new position of the pelvis
-        p_pw, quat_pw = motion.getPelvisPosition(t)
+        p_pw, quat_pw = motion.getPelvisPosition(actual_t)
 
         # create a joint state message
         msg = JointState()
@@ -140,5 +147,5 @@ if __name__ == "__main__":
         servo.sleep()
 
         # Break if we have completed the full time.
-        if (t > tf):
+        if (actual_t > tf):
             break
