@@ -15,11 +15,25 @@ class Motion():
         self.sdot = 0.0
 
     def _update_s(self, t):
+        '''
+        this private function updates the position value s and its derivative
+        sdot stored in the object
+
+        the function s(t) has p_0 = 0 and p_f = 1, v_0 = v_f = 0 and a time
+        duration of 1 second
+        '''
         t_floor = t % 1
         self.s = 3 * t_floor ** 2 - 2 * t_floor ** 3
         self.sdot = 6 * t_floor - 6 * t_floor ** 2
 
     def _update_leg_angle(self):
+        '''
+        this function updates the stored leg angle based on the position
+        function s(t) that is stored.
+
+        it goes from positive 20 degrees to -20 degrees over the span of 1
+        and is stored in radians.
+        '''
         self.leg_angle = (20 - 40 * (self.s % 1)) * np.pi / 180
 
     # ==========================================================================
@@ -118,7 +132,7 @@ class Motion():
         error = np.vstack((error_p, error_r))
         vr = velocity + lam * error
 
-        qdot = np.linalg.pinv(J, 0.001) @ vr
+        qdot = utils.damped_pseudo_inverse(J, 0.1) @ vr
         q = q + qdot * dt
 
         return q
