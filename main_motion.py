@@ -96,12 +96,19 @@ if __name__ == "__main__":
 
     # Run the servo loop until shutdown (killed or ctrl-C'ed).
     t   = 0.0
-    tf  = 5.0
+    tf  = 7.5
     lam = 0.1/dt
     switch_after_t = 0.75
     t_cycle = 0.0
     # this is the default, and means that the right leg is bent
     switched = False
+
+    # Fun stuff for rotation and finite looping
+    in_rotation = False
+    rotate_after = 3.0
+
+    reps = 0
+    max_reps = 2
 
     motion = Motion(time_duration=switch_after_t)
     while not rospy.is_shutdown():
@@ -111,23 +118,32 @@ if __name__ == "__main__":
 
         if t_cycle >= switch_after_t:
             t_cycle = 0.0
-            switched = not switched
+
+            if in_rotation:
+                in_rotation = False
+            else:
+                switched = not switched
+
+        elif (t >= rotate_after and t <= rotate_after + switch_after_t) or (t >= 2 * rotate_after + switch_after_t):
+            in_rotation = True
+            p_pw, quat_pw = motion.rotatePelvis(t)
+
+        if not in_rotation:
+            # Calculate the new position of the pelvis
+            p_pw, quat_pw = motion.getPelvisPosition(t)
 
         # Here is where we will calculate the new joint values based on
         # time step and the current positions stored in joints dictionary
 
         # For our first example, we will try to move the left leg backwards
         # w.r.t the pelvis while keeping the foot parallel to the ground
-        left_leg_q = motion.getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam, straight=(not switched))
-        for q_name, q in zip(left_leg_joints_names, left_leg_q):
-            joints[q_name] = q
+            left_leg_q = motion.getJointAngles(ll_kin, t, left_leg_q, ll_N, dt, lam, straight=(not switched))
+            for q_name, q in zip(left_leg_joints_names, left_leg_q):
+                joints[q_name] = q
 
-        right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=switched, is_left=False)
-        for q_name, q in zip(right_leg_joints_names, right_leg_q):
-            joints[q_name] = q
-
-        # Calculate the new position of the pelvis
-        p_pw, quat_pw = motion.getPelvisPosition(t)
+            right_leg_q = motion.getJointAngles(rl_kin, t, right_leg_q, rl_N, dt, lam, straight=switched, is_left=False)
+            for q_name, q in zip(right_leg_joints_names, right_leg_q):
+                joints[q_name] = q
 
         # create a joint state message
         msg = JointState()
@@ -147,6 +163,14 @@ if __name__ == "__main__":
 
         servo.sleep()
 
-        # Break if we have completed the full time.
         if (t > tf):
+            t = 0.0
+            t_cycle = 0.0
+            in_rotation = False
+            switched = False
+            reps += 1
+
+
+        # Break if we have completed the full time.
+        if (reps >= max_reps):
             break

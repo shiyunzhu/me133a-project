@@ -15,6 +15,10 @@ class Motion():
         self.leg_angle = 0.0
         self.s = 0.0
         self.sdot = 0.0
+        self.sprev = 0.0
+        self.pelvis_pos = np.array([[0.0],[0.0],[0.0]])
+        self.forwards = 0
+        self.pelvis_rot = np.identity(3)
 
     def _calc_spline(self, dt):
         Y = np.array([[1, 0, 0, 0],
@@ -33,6 +37,7 @@ class Motion():
         duration of 1 second
         '''
         t_floor = t % self.time_duration
+        self.sprev = self.s
         self.s = (self.c[0]
                  + self.c[1] * t_floor
                  + self.c[2] * t_floor ** 2
@@ -101,18 +106,43 @@ class Motion():
     # ==========================================================================
     # Public functions
     # ==========================================================================
-    def getPelvisPosition(self, t):
+    def getPelvisPosition(self, t, max_t_going_forwards=3):
         # Calculate the new position of the pelvis
-        x = -0.5 * (self.s + math.floor(t / self.time_duration))
+        ds = self.s - self.sprev
+        if ds < 0:
+            ds = 0.0
+        x = self.pelvis_pos[0,0] + self.forwards * -0.5 * ds
         y = 0.0
         z = np.cos(self.leg_angle) * self.leg_length
 
+        # if t >= max_t_going_forwards + self.time_duration:
+        #    x = -0.5 * (math.floor(max_t_going_forwards / self.time_duration))
+        #    x -= -0.5 * (self.s + math.floor((t - max_t_going_forwards - self.time_duration) / self.time_duration))
+
         p_pw = np.array([[x],[y],[z]])# Choose the pelvis w.r.t. world position
-        R_pw = np.identity(3)     # Choose the pelviw w.r.t. world orientation
+        R_pw = self.pelvis_rot    # Choose the pelviw w.r.t. world orientation
         # Determine the quaternions for the orientation, using a T matrix:
         T_pw = np.vstack((np.hstack((R_pw, p_pw)),np.array([[0, 0, 0, 1]])))
         quat_pw = transforms.transformations.quaternion_from_matrix(T_pw)
+
+        # update saved position
+        self.pelvis_pos = p_pw
         return p_pw, quat_pw
+
+    def rotatePelvis(self, t, max_t=3.0):
+        if t >= max_t and t <= max_t + self.time_duration:
+            self.forwards=1
+        elif t >= 2 * max_t + self.time_duration:
+            self.forwards=-1
+
+        self._update_s(t)
+        if self.s - self.sprev > 0:
+            self.pelvis_rot = self.pelvis_rot @ utils.Rz(self.forwards * (self.s - self.sprev) * np.pi)
+
+        T_pw = np.vstack((np.hstack((self.pelvis_rot, self.pelvis_pos)),np.array([[0, 0, 0, 1]])))
+        quat_pw = transforms.transformations.quaternion_from_matrix(T_pw)
+
+        return self.pelvis_pos, quat_pw
 
     def getJointAngles(self, kin, t, q, N, dt, lam, straight=True, is_left=True):
         # update leg_angle
