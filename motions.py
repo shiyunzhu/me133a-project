@@ -17,7 +17,7 @@ class Motion():
         self.sdot = 0.0
         self.sprev = 0.0
         self.pelvis_pos = np.array([[0.0],[0.0],[0.0]])
-        self.forwards = 0
+        self.forwards = -1
         self.pelvis_rot = np.identity(3)
 
     def _calc_spline(self, dt):
@@ -107,17 +107,15 @@ class Motion():
     # Public functions
     # ==========================================================================
     def getPelvisPosition(self, t, max_t_going_forwards=3):
+        self._update_s(t)
+
         # Calculate the new position of the pelvis
         ds = self.s - self.sprev
         if ds < 0:
             ds = 0.0
-        x = self.pelvis_pos[0,0] + self.forwards * -0.5 * ds
+        x = self.pelvis_pos[0,0] + self.forwards * 0.5 * ds
         y = 0.0
         z = np.cos(self.leg_angle) * self.leg_length
-
-        # if t >= max_t_going_forwards + self.time_duration:
-        #    x = -0.5 * (math.floor(max_t_going_forwards / self.time_duration))
-        #    x -= -0.5 * (self.s + math.floor((t - max_t_going_forwards - self.time_duration) / self.time_duration))
 
         p_pw = np.array([[x],[y],[z]])# Choose the pelvis w.r.t. world position
         R_pw = self.pelvis_rot    # Choose the pelviw w.r.t. world orientation
