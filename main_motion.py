@@ -31,9 +31,9 @@ if __name__ == "__main__":
         'l_arm_wry' : 0.0,
         'l_arm_wry2' : 0.0,
         'l_leg_akx' : 0.0,
-        'l_leg_aky' : 0.0,
+        'l_leg_aky' : 0.5,
         'l_leg_hpx' : 0.0,
-        'l_leg_hpy' : 0.0,
+        'l_leg_hpy' : -0.4,
         'l_leg_hpz' : 0.0,
         'l_leg_kny' : 0.0,
         'neck_ry' : 0.0,
@@ -45,11 +45,11 @@ if __name__ == "__main__":
         'r_arm_wry' : 0.0,
         'r_arm_wry2' : 0.0,
         'r_leg_akx' : 0.0,
-        'r_leg_aky' : 0.0,
+        'r_leg_aky' : 0.28,
         'r_leg_hpx' : 0.0,
-        'r_leg_hpy' : 0.0,
+        'r_leg_hpy' : 0.13,
         'r_leg_hpz' : 0.0,
-        'r_leg_kny' : 0.0
+        'r_leg_kny' : 0.52
     }
 
     # Grab the URDF from the parameter server.
